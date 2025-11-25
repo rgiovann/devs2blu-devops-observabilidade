@@ -1,0 +1,12 @@
+---
+targets:
+  - "192.168.1.1":
+      alias: router
+  - "8.8.8.8":
+      alias: google
+
+ping:
+  interval: 5s
+  timeout: 4s
+  history-size: 5
+  payload-size: 64

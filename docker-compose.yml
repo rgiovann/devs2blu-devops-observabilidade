@@ -1,0 +1,67 @@
+version: "3.9"
+
+services:
+  exporter:
+    build:
+      context: ./exporter
+    container_name: obs-node-exporter
+    restart: unless-stopped
+    ports:
+      - "9100:9100"
+    volumes:
+      - /:/host:ro,rslave
+      - ./exporter/textfile:/etc/node-exporter/textfile
+    environment:
+      - NODE_EXPORTER_FLAGS=
+
+  ping-exporter:
+    image: czerwonk/ping_exporter:latest
+    container_name: obs-ping-exporter
+    restart: unless-stopped
+    cap_add:
+      - NET_RAW
+    environment:
+      - CONFIG_FILE=/config/ping_exporter.yml
+    ports:
+      - "9427:9427"
+    volumes:
+      - ./ping-exporter/ping_exporter.yml:/config/ping_exporter.yml:ro
+    depends_on:
+      - exporter
+
+  prometheus:
+    build:
+      context: ./prometheus
+    image: obs-prometheus
+    container_name: obs-prometheus
+    restart: unless-stopped
+    depends_on:
+      - exporter
+      - ping-exporter
+    ports:
+      - "9090:9090"
+    volumes:
+      - prometheus-data:/prometheus
+
+  grafana:
+    build:
+      context: ./grafana
+    image: obs-grafana
+    container_name: obs-grafana
+    restart: unless-stopped
+    ports:
+      - "3300:3000"
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+      - GF_USERS_ALLOW_SIGN_UP=false
+    depends_on:
+      - prometheus
+    volumes:
+      - grafana-data:/var/lib/grafana
+      - ./grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./grafana/dashboards:/var/lib/grafana/dashboards:ro
+
+volumes:
+  prometheus-data:
+  grafana-data:
