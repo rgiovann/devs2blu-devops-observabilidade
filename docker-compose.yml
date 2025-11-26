@@ -1,5 +1,4 @@
 ---
-version: "3.9"
 services:
   db:
     build: ./db
@@ -24,8 +23,15 @@ services:
   db-exporter:
     image: prom/mysqld-exporter:v0.15.1
     container_name: db-exporter
-    environment:
-      DATA_SOURCE_NAME: "exporter:exporterpass@tcp(db:3306)/mysql"
+    command:
+      - '--config.my-cnf=/config/.my.cnf'
+      - '--collect.info_schema.innodb_cmp'
+      - '--collect.info_schema.innodb_cmpmem'
+      - '--collect.info_schema.query_response_time'
+      - '--collect.global_status'
+      - '--collect.global_variables'
+    volumes:
+      - ./exporter-db/.my.cnf:/config/.my.cnf:ro
     depends_on:
       - db
     networks:
@@ -39,7 +45,7 @@ services:
       - /:/host:ro,rslave
       - ./exporter/textfile:/etc/node-exporter/textfile
     environment:
-      - NODE_EXPORTER_FLAGS: ""
+      NODE_EXPORTER_FLAGS: ""
     networks:
       - monitor-net
   ping-exporter:
@@ -65,6 +71,7 @@ services:
     depends_on:
       - exporter
       - ping-exporter
+      - db-exporter
     volumes:
       - prometheus_data:/prometheus
     networks:
@@ -76,9 +83,9 @@ services:
     container_name: obs-grafana
     restart: unless-stopped
     environment:
-      - GF_SECURITY_ADMIN_USER: admin
-      - GF_SECURITY_ADMIN_PASSWORD: admin
-      - GF_USERS_ALLOW_SIGN_UP: "false"
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: admin
+      GF_USERS_ALLOW_SIGN_UP: "false"
     depends_on:
       - prometheus
     volumes:

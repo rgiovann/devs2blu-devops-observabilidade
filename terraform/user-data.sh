@@ -75,7 +75,7 @@ chown -R admin:admin /home/admin/devs2blu-devops-observabilidade
 # ============================
 # Sobe os containers do projeto
 # ============================
-docker compose up -d
+sudo -u admin docker compose up -d
 
 # ============================
 # Log de conclusão
