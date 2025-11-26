@@ -54,14 +54,35 @@ if id "admin" &>/dev/null; then
 fi
 
 # ============================
-# Clona o repositório da aula
+# Clona o repositório do projeto
 # ============================
 cd /home/admin
-sudo -u admin git clone https://github.com/Machado-tec/Aula-Observabilidade.git
+sudo -u admin git clone https://github.com/rgiovann/devs2blu-devops-observabilidade.git
 
-cd Aula-Observabilidade
+cd devs2blu-devops-observabilidade
 
 # ============================
-# Sobe os containers da aula
+# Remove diretório terraform (não será usado)
+# ============================
+rm -rf terraform
+
+
+# ============================
+# Garante permissões corretas
+# ============================
+chown -R admin:admin /home/admin/devs2blu-devops-observabilidade
+
+# ============================
+# Sobe os containers do projeto
 # ============================
 docker compose up -d
+
+# ============================
+# Log de conclusão
+# ============================
+echo "========================================" >> /var/log/user-data.log
+echo "Deploy concluído em $(date)" >> /var/log/user-data.log
+echo "Projeto: devs2blu-devops-observabilidade" >> /var/log/user-data.log
+echo "Containers ativos: $(docker ps --format '{{.Names}}' | wc -l)" >> /var/log/user-data.log
+echo "Acesso via HTTPS na porta 443" >> /var/log/user-data.log
+echo "========================================" >> /var/log/user-data.log

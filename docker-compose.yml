@@ -9,19 +9,20 @@ services:
         volumes:
             - db_data:/var/lib/mysql
             - ./db/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+            - ./db/exporter-user.sql:/docker-entrypoint-initdb.d/exporter-user.sql:ro
         healthcheck:
-          test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-uroot", "-proot"]
-          interval: 10s
-          timeout: 5s
-          retries: 5
+            test: ['CMD', 'bash', '-c', 'echo > /dev/tcp/localhost/3306']
+            interval: 10s
+            timeout: 5s
+            retries: 5
         networks:
             - monitor-net
 
     db-exporter:
         image: prom/mysqld-exporter:v0.15.1
         container_name: db-exporter
-        env_file:
-            - ./exporter-db/configs/.env
+        environment:
+            - DATA_SOURCE_NAME=exporter:exporterpass@(db:3306)/
         depends_on:
             - db
         networks:
@@ -38,7 +39,7 @@ services:
         environment:
             - NODE_EXPORTER_FLAGS=
         networks:
-            - monitor-net            
+            - monitor-net
 
     ping-exporter:
         image: czerwonk/ping_exporter:latest
@@ -53,7 +54,7 @@ services:
         depends_on:
             - exporter
         networks:
-            - monitor-net            
+            - monitor-net
 
     prometheus:
         build:
@@ -67,7 +68,7 @@ services:
         volumes:
             - prometheus_data:/prometheus
         networks:
-            - monitor-net            
+            - monitor-net
 
     grafana:
         build:
@@ -86,21 +87,21 @@ services:
             - ./grafana/provisioning:/etc/grafana/provisioning:ro
         networks:
             - monitor-net
-            
+
     alertmanager:
         image: prom/alertmanager
         container_name: alertmanager
         networks:
             - monitor-net
         volumes:
-          - ./alertmanager/alertmanager.yml:/etc/alertmanager/alertmanager.yml:ro
+            - ./alertmanager/alertmanager.yml:/etc/alertmanager/alertmanager.yml:ro
 
     load-generator:
         build: ./load-generator
         container_name: load-generator
         depends_on:
-          db:
-            condition: service_healthy
+            db:
+                condition: service_healthy
         networks:
             - monitor-net
 
@@ -113,8 +114,8 @@ services:
             - grafana
             - prometheus
         volumes:
-          - ./nginx/.htpasswd:/etc/nginx/.htpasswd:ro
-          - ./nginx/ssl:/etc/nginx/ssl:ro
+            - ./nginx/.htpasswd:/etc/nginx/.htpasswd:ro
+            - ./nginx/ssl:/etc/nginx/ssl:ro
         networks:
             - monitor-net
 

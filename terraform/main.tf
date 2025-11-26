@@ -1,6 +1,6 @@
 resource "aws_security_group" "obs_sg" {
   name        = "observabilidade-sg"
-  description = "Acesso SSH, Grafana, Prometheus"
+  description = "Acesso SSH e HTTPS (Nginx com autenticacao)"
   vpc_id      = var.vpc_id
 
   ingress {
@@ -12,33 +12,9 @@ resource "aws_security_group" "obs_sg" {
   }
 
   ingress {
-    description = "Grafana"
-    from_port   = 3300
-    to_port     = 3300
-    protocol    = "tcp"
-    cidr_blocks = ["0.0.0.0/0"]
-  }
-
-  ingress {
-    description = "Prometheus"
-    from_port   = 9090
-    to_port     = 9090
-    protocol    = "tcp"
-    cidr_blocks = ["0.0.0.0/0"]
-  }
-
-  ingress {
-    description = "Node Exporter"
-    from_port   = 9100
-    to_port     = 9100
-    protocol    = "tcp"
-    cidr_blocks = ["0.0.0.0/0"]
-  }
-
-  ingress {
-    description = "Ping Exporter"
-    from_port   = 9427
-    to_port     = 9427
+    description = "HTTPS (Nginx reverse proxy)"
+    from_port   = 443
+    to_port     = 443
     protocol    = "tcp"
     cidr_blocks = ["0.0.0.0/0"]
   }
@@ -50,10 +26,14 @@ resource "aws_security_group" "obs_sg" {
     protocol    = "-1"
     cidr_blocks = ["0.0.0.0/0"]
   }
+
+  tags = {
+    Name = "observabilidade-sg"
+  }
 }
 
 resource "aws_instance" "obs_ec2" {
-  ami = "ami-011e7b514a4f15472"        // debian 12
+  ami                         = "ami-011e7b514a4f15472"  # Debian 12
   instance_type               = "t3.small"
   subnet_id                   = var.subnet_id
   key_name                    = var.key_name
@@ -62,7 +42,13 @@ resource "aws_instance" "obs_ec2" {
 
   user_data = file("${path.module}/user-data.sh")
 
+  root_block_device {
+    volume_size = 20  # GB (ajuste se necessário)
+    volume_type = "gp3"
+  }
+
   tags = {
-    Name = "leopoldo-ec2-observabilidade"
+    Name    = "leopoldo-ec2-observabilidade"
+    Project = "devs2blu-observabilidade"
   }
 }

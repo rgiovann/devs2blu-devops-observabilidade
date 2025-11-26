@@ -1,4 +1,6 @@
 ### AL ###
+#pem keys
+leopoldo-key-observabilidade.pem
 #Template for AL projects for Dynamics 365 Business Central
 #launch.json folder
 .vscode/
