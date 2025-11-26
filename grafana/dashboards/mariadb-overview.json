@@ -103,7 +103,73 @@
       ],
       "title": "InnoDB Buffer Pool Usage",
       "type": "timeseries"
-    }
+    },
+	{
+	  "datasource": { "type": "prometheus", "uid": "prometheus-ds" },
+	  "fieldConfig": {
+		"defaults": { "unit": "none" },
+		"overrides": []
+	  },
+	  "gridPos": { "h": 8, "w": 12, "x": 12, "y": 8 },
+	  "id": 4,
+	  "options": {
+		"legend": { "displayMode": "list" },
+		"tooltip": { "mode": "single" }
+	  },
+	  "targets": [
+		{
+		  "expr": "mysql_global_status_slow_queries",
+		  "legendFormat": "Slow Queries",
+		  "refId": "A"
+		}
+	  ],
+	  "title": "Slow Queries",
+	  "type": "timeseries"
+	},
+	{
+	  "datasource": { "type": "prometheus", "uid": "prometheus-ds" },
+	  "fieldConfig": {
+		"defaults": { "unit": "none" },
+		"overrides": []
+	  },
+	  "gridPos": { "h": 8, "w": 12, "x": 0, "y": 16 },
+	  "id": 5,
+	  "options": {
+		"legend": { "displayMode": "list" },
+		"tooltip": { "mode": "single" }
+	  },
+	  "targets": [
+		{
+		  "expr": "mysql_global_status_threads_connected",
+		  "legendFormat": "Threads Connected",
+		  "refId": "A"
+		}
+	  ],
+	  "title": "Threads Connected",
+	  "type": "timeseries"
+	},
+	{
+	  "datasource": { "type": "prometheus", "uid": "prometheus-ds" },
+	  "fieldConfig": {
+		"defaults": { "unit": "bytes" },
+		"overrides": []
+	  },
+	  "gridPos": { "h": 8, "w": 12, "x": 12, "y": 16 },
+	  "id": 6,
+	  "options": {
+		"legend": { "displayMode": "list" },
+		"tooltip": { "mode": "single" }
+	  },
+	  "targets": [
+		{
+		  "expr": "mysql_global_status_innodb_data_written",
+		  "legendFormat": "Bytes Written",
+		  "refId": "A"
+		}
+	  ],
+	  "title": "InnoDB Data Written",
+	  "type": "timeseries"
+  }
   ],
   "refresh": "10s",
   "schemaVersion": 38,
