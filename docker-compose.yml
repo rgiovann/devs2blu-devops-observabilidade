@@ -25,7 +25,7 @@ services:
     image: prom/mysqld-exporter:v0.15.1
     container_name: db-exporter
     environment:
-      DATA_SOURCE_NAME: exporter:exporterpass@tcp(db:3306)/mysql
+      DATA_SOURCE_NAME: "exporter:exporterpass@tcp(db:3306)/mysql"
     depends_on:
       - db
     networks:
@@ -39,7 +39,7 @@ services:
       - /:/host:ro,rslave
       - ./exporter/textfile:/etc/node-exporter/textfile
     environment:
-      - NODE_EXPORTER_FLAGS=
+      - NODE_EXPORTER_FLAGS: ""
     networks:
       - monitor-net
   ping-exporter:
@@ -76,9 +76,9 @@ services:
     container_name: obs-grafana
     restart: unless-stopped
     environment:
-      - GF_SECURITY_ADMIN_USER=admin
-      - GF_SECURITY_ADMIN_PASSWORD=admin
-      - GF_USERS_ALLOW_SIGN_UP=false
+      - GF_SECURITY_ADMIN_USER: admin
+      - GF_SECURITY_ADMIN_PASSWORD: admin
+      - GF_USERS_ALLOW_SIGN_UP: "false"
     depends_on:
       - prometheus
     volumes:
