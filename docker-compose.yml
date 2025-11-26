@@ -1,127 +1,122 @@
-version: '3.9'
-
+---
+version: "3.9"
 services:
-    db:
-        build: ./db
-        container_name: db
-        ports:
-            - '3306:3306'
-        volumes:
-            - db_data:/var/lib/mysql
-            - ./db/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
-            - ./db/exporter-user.sql:/docker-entrypoint-initdb.d/exporter-user.sql:ro
-        healthcheck:
-            test: ['CMD', 'bash', '-c', 'echo > /dev/tcp/localhost/3306']
-            interval: 10s
-            timeout: 5s
-            retries: 5
-        networks:
-            - monitor-net
-
-    db-exporter:
-        image: prom/mysqld-exporter:v0.15.1
-        container_name: db-exporter
-        environment: DATA_SOURCE_NAME=exporter:exporterpass@tcp(db:3306)/mysql
-        depends_on:
-            - db
-        networks:
-            - monitor-net
-
-    exporter:
-        build:
-            context: ./exporter
-        container_name: obs-node-exporter
-        restart: unless-stopped
-        volumes:
-            - /:/host:ro,rslave
-            - ./exporter/textfile:/etc/node-exporter/textfile
-        environment:
-            - NODE_EXPORTER_FLAGS=
-        networks:
-            - monitor-net
-
-    ping-exporter:
-        image: czerwonk/ping_exporter:latest
-        container_name: obs-ping-exporter
-        restart: unless-stopped
-        cap_add:
-            - NET_RAW
-        environment:
-            - CONFIG_FILE=/config/ping_exporter.yml
-        volumes:
-            - ./ping-exporter/ping_exporter.yml:/config/ping_exporter.yml:ro
-        depends_on:
-            - exporter
-        networks:
-            - monitor-net
-
-    prometheus:
-        build:
-            context: ./prometheus
-        image: obs-prometheus
-        container_name: obs-prometheus
-        restart: unless-stopped
-        depends_on:
-            - exporter
-            - ping-exporter
-        volumes:
-            - prometheus_data:/prometheus
-        networks:
-            - monitor-net
-
-    grafana:
-        build:
-            context: ./grafana
-        image: obs-grafana
-        container_name: obs-grafana
-        restart: unless-stopped
-        environment:
-            - GF_SECURITY_ADMIN_USER=admin
-            - GF_SECURITY_ADMIN_PASSWORD=admin
-            - GF_USERS_ALLOW_SIGN_UP=false
-        depends_on:
-            - prometheus
-        volumes:
-            - grafana_data:/var/lib/grafana
-            - ./grafana/provisioning:/etc/grafana/provisioning:ro
-        networks:
-            - monitor-net
-
-    alertmanager:
-        image: prom/alertmanager
-        container_name: alertmanager
-        networks:
-            - monitor-net
-        volumes:
-            - ./alertmanager/alertmanager.yml:/etc/alertmanager/alertmanager.yml:ro
-
-    load-generator:
-        build: ./load-generator
-        container_name: load-generator
-        depends_on:
-            db:
-                condition: service_healthy
-        networks:
-            - monitor-net
-
-    nginx:
-        build: ./nginx
-        container_name: nginx
-        ports:
-            - '443:443'
-        depends_on:
-            - grafana
-            - prometheus
-        volumes:
-            - ./nginx/.htpasswd:/etc/nginx/.htpasswd:ro
-            - ./nginx/ssl:/etc/nginx/ssl:ro
-        networks:
-            - monitor-net
-
+  db:
+    build: ./db
+    container_name: db
+    ports:
+      - 3306:3306
+    volumes:
+      - db_data:/var/lib/mysql
+      - ./db/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+      - ./db/exporter-user.sql:/docker-entrypoint-initdb.d/exporter-user.sql:ro
+    healthcheck:
+      test:
+        - CMD
+        - bash
+        - -c
+        - echo > /dev/tcp/localhost/3306
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - monitor-net
+  db-exporter:
+    image: prom/mysqld-exporter:v0.15.1
+    container_name: db-exporter
+    environment:
+      DATA_SOURCE_NAME: exporter:exporterpass@tcp(db:3306)/mysql
+    depends_on:
+      - db
+    networks:
+      - monitor-net
+  exporter:
+    build:
+      context: ./exporter
+    container_name: obs-node-exporter
+    restart: unless-stopped
+    volumes:
+      - /:/host:ro,rslave
+      - ./exporter/textfile:/etc/node-exporter/textfile
+    environment:
+      - NODE_EXPORTER_FLAGS=
+    networks:
+      - monitor-net
+  ping-exporter:
+    image: czerwonk/ping_exporter:latest
+    container_name: obs-ping-exporter
+    restart: unless-stopped
+    cap_add:
+      - NET_RAW
+    environment:
+      - CONFIG_FILE=/config/ping_exporter.yml
+    volumes:
+      - ./ping-exporter/ping_exporter.yml:/config/ping_exporter.yml:ro
+    depends_on:
+      - exporter
+    networks:
+      - monitor-net
+  prometheus:
+    build:
+      context: ./prometheus
+    image: obs-prometheus
+    container_name: obs-prometheus
+    restart: unless-stopped
+    depends_on:
+      - exporter
+      - ping-exporter
+    volumes:
+      - prometheus_data:/prometheus
+    networks:
+      - monitor-net
+  grafana:
+    build:
+      context: ./grafana
+    image: obs-grafana
+    container_name: obs-grafana
+    restart: unless-stopped
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+      - GF_USERS_ALLOW_SIGN_UP=false
+    depends_on:
+      - prometheus
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./grafana/provisioning:/etc/grafana/provisioning:ro
+    networks:
+      - monitor-net
+  alertmanager:
+    image: prom/alertmanager
+    container_name: alertmanager
+    networks:
+      - monitor-net
+    volumes:
+      - ./alertmanager/alertmanager.yml:/etc/alertmanager/alertmanager.yml:ro
+  load-generator:
+    build: ./load-generator
+    container_name: load-generator
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - monitor-net
+  nginx:
+    build: ./nginx
+    container_name: nginx
+    ports:
+      - 443:443
+    depends_on:
+      - grafana
+      - prometheus
+    volumes:
+      - ./nginx/.htpasswd:/etc/nginx/.htpasswd:ro
+      - ./nginx/ssl:/etc/nginx/ssl:ro
+    networks:
+      - monitor-net
 networks:
-    monitor-net:
-
+  monitor-net: null
 volumes:
-    db_data:
-    prometheus_data:
-    grafana_data:
+  db_data: null
+  prometheus_data: null
+  grafana_data: null
