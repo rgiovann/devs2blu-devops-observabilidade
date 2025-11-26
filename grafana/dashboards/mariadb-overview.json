@@ -162,12 +162,12 @@
 	  },
 	  "targets": [
 		{
-		  "expr": "mysql_global_status_innodb_data_written",
-		  "legendFormat": "Bytes Written",
+		  "expr": "mysql_global_status_bytes_received",
+		  "legendFormat": "Bytes Received",
 		  "refId": "A"
 		}
 	  ],
-	  "title": "InnoDB Data Written",
+	  "title": "Bytes Received",
 	  "type": "timeseries"
   }
   ],
