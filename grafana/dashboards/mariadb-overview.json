@@ -42,7 +42,7 @@
       },
       "targets": [
         {
-          "expr": "mariadb_global_status_queries",
+          "expr": "mysql_global_status_queries",
           "legendFormat": "Queries",
           "refId": "A"
         }
@@ -69,7 +69,7 @@
       },
       "targets": [
         {
-          "expr": "mariadb_global_status_threads_running",
+          "expr": "mysql_global_status_threads_running",
           "legendFormat": "Threads Running",
           "refId": "B"
         }
@@ -96,7 +96,7 @@
       },
       "targets": [
         {
-          "expr": "mariadb_global_status_innodb_buffer_pool_bytes_data",
+          "expr": "mysql_global_status_innodb_buffer_pool_bytes_data",
           "legendFormat": "Buffer Pool Data",
           "refId": "A"
         }
