@@ -21,8 +21,7 @@ services:
     db-exporter:
         image: prom/mysqld-exporter:v0.15.1
         container_name: db-exporter
-        environment:
-            - DATA_SOURCE_NAME=exporter:exporterpass@(db:3306)/
+        environment: DATA_SOURCE_NAME=exporter:exporterpass@tcp(db:3306)/mysql
         depends_on:
             - db
         networks:
