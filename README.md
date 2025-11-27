@@ -270,13 +270,229 @@ Acesse `https://localhost` e informe credenciais quando solicitado.
 
 ## Compose completo
 
-Execute o stack inteiro:
+### Arquivo docker-compose.yml
+
+O arquivo `docker-compose.yml` na raiz do projeto orquestra todos os serviços:
+
+```yaml
+services:
+  db:
+    build: ./db
+    container_name: db
+    ports:
+      - 3306:3306
+    volumes:
+      - db_data:/var/lib/mysql
+      - ./db/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+      - ./db/exporter-user.sql:/docker-entrypoint-initdb.d/exporter-user.sql:ro
+    healthcheck:
+      test: ["CMD", "bash", "-c", "echo > /dev/tcp/localhost/3306"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - monitor-net
+
+  db-exporter:
+    image: prom/mysqld-exporter:v0.15.1
+    container_name: db-exporter
+    command:
+      - '--config.my-cnf=/config/.my.cnf'
+      - '--collect.info_schema.innodb_cmp'
+      - '--collect.info_schema.innodb_cmpmem'
+      - '--collect.info_schema.query_response_time'
+      - '--collect.global_status'
+      - '--collect.global_variables'
+    volumes:
+      - ./exporter-db/.my.cnf:/config/.my.cnf:ro
+    depends_on:
+      - db
+    networks:
+      - monitor-net
+
+  exporter:
+    build:
+      context: ./exporter
+    container_name: obs-node-exporter
+    restart: unless-stopped
+    volumes:
+      - /:/host:ro,rslave
+      - ./exporter/textfile:/etc/node-exporter/textfile
+    environment:
+      NODE_EXPORTER_FLAGS: ""
+    networks:
+      - monitor-net
+
+  ping-exporter:
+    image: czerwonk/ping_exporter:latest
+    container_name: obs-ping-exporter
+    restart: unless-stopped
+    cap_add:
+      - NET_RAW
+    environment:
+      - CONFIG_FILE=/config/ping_exporter.yml
+    volumes:
+      - ./ping-exporter/ping_exporter.yml:/config/ping_exporter.yml:ro
+    depends_on:
+      - exporter
+    networks:
+      - monitor-net
+
+  prometheus:
+    build:
+      context: ./prometheus
+    image: obs-prometheus
+    container_name: obs-prometheus
+    restart: unless-stopped
+    depends_on:
+      - exporter
+      - ping-exporter
+      - db-exporter
+    volumes:
+      - prometheus_data:/prometheus
+    networks:
+      - monitor-net
+
+  grafana:
+    build:
+      context: ./grafana
+    image: obs-grafana
+    container_name: obs-grafana
+    restart: unless-stopped
+    environment:
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: admin
+      GF_USERS_ALLOW_SIGN_UP: "false"
+    depends_on:
+      - prometheus
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./grafana/provisioning:/etc/grafana/provisioning:ro
+    networks:
+      - monitor-net
+
+  alertmanager:
+    image: prom/alertmanager
+    container_name: alertmanager
+    networks:
+      - monitor-net
+    volumes:
+      - ./alertmanager/alertmanager.yml:/etc/alertmanager/alertmanager.yml:ro
+
+  load-generator:
+    build: ./load-generator
+    container_name: load-generator
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - monitor-net
+
+  nginx:
+    build: ./nginx
+    container_name: nginx
+    ports:
+      - 443:443
+    depends_on:
+      - grafana
+      - prometheus
+    volumes:
+      - ./nginx/.htpasswd:/etc/nginx/.htpasswd:ro
+      - ./nginx/ssl:/etc/nginx/ssl:ro
+    networks:
+      - monitor-net
+
+networks:
+  monitor-net:
+
+volumes:
+  db_data:
+  prometheus_data:
+  grafana_data:
+```
+
+### Características principais
+
+**Rede isolada**: todos os serviços comunicam-se através da rede `monitor-net`, isolando o tráfego interno.
+
+**Volumes nomeados**: 
+- `db_data`: persiste dados do MariaDB
+- `prometheus_data`: persiste time-series database do Prometheus
+- `grafana_data`: persiste dashboards, usuários e configurações do Grafana
+
+**Healthcheck no banco**: o serviço `db` possui healthcheck que verifica conectividade TCP na porta 3306. O `load-generator` aguarda este healthcheck (`condition: service_healthy`) antes de iniciar.
+
+**Capabilities especiais**: `ping-exporter` recebe `NET_RAW` para enviar pacotes ICMP (ping).
+
+**Dependências explícitas**: 
+- `db-exporter` depende de `db`
+- `ping-exporter` depende de `exporter`
+- `prometheus` depende de todos os exporters
+- `grafana` depende de `prometheus`
+- `nginx` depende de `grafana` e `prometheus`
+- `load-generator` depende de `db` (com healthcheck)
+
+**Políticas de restart**: a maioria dos serviços usa `unless-stopped` para garantir disponibilidade após reinicializações do host.
+
+**Exposição de portas**: apenas duas portas expostas ao host:
+- `3306`: MariaDB (útil para debug, pode ser removida em produção)
+- `443`: Nginx HTTPS (único ponto de acesso externo)
+
+### Executar o stack
+
+Subir todos os serviços em background:
 
 ```bash
 docker compose up -d
 ```
 
-Use `docker compose down` para encerrar todos os serviços.
+Ver logs em tempo real:
+
+```bash
+docker compose logs -f
+```
+
+Ver logs de um serviço específico:
+
+```bash
+docker compose logs -f grafana
+```
+
+Verificar status:
+
+```bash
+docker compose ps
+```
+
+Reiniciar serviço específico:
+
+```bash
+docker compose restart grafana
+```
+
+Encerrar todos os serviços:
+
+```bash
+docker compose down
+```
+
+Encerrar e remover volumes (CUIDADO: perde todos os dados):
+
+```bash
+docker compose down -v
+```
+
+### Ordem de inicialização
+
+O Docker Compose garante a seguinte ordem:
+1. `db` (com healthcheck)
+2. `db-exporter`, `exporter`
+3. `ping-exporter`
+4. `prometheus`
+5. `alertmanager`
+6. `grafana`
+7. `load-generator` (aguarda healthcheck do `db`)
+8. `nginx`
 
 Como as pastas `grafana/provisioning` e `grafana/dashboards` são montadas, qualquer alteração local reflete após `docker compose restart grafana`.
 
